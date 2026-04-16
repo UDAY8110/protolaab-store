@@ -439,13 +439,46 @@ font-weight:600;
 margin:6px 0;
 }
 
-.whatsapp-order-btn{
-display:flex;
-align-items:center;
-justify-content:center;
-gap:8px;
+
+
+/* PAY NOW BUTTON */
+#payBtn{
+width:100%;
+padding:14px;
+border:none;
+border-radius:12px;
+background:linear-gradient(135deg,#38bdf8,#6366f1);
+color:white;
+font-size:16px;
+font-weight:600;
+cursor:pointer;
+transition:all 0.3s ease;
+box-shadow:0 4px 15px rgba(0,0,0,0.3);
 }
 
+/* HOVER */
+#payBtn:hover{
+transform:translateY(-2px);
+box-shadow:0 6px 20px rgba(56,189,248,0.4);
+}
+
+/* CLICK EFFECT */
+#payBtn:active{
+transform:scale(0.97);
+}
+
+/* DISABLED STATE */
+#payBtn:disabled{
+background:#475569;
+cursor:not-allowed;
+box-shadow:none;
+}
+
+/* LOADING EFFECT */
+#payBtn.loading{
+background:#0ea5e9;
+cursor:wait;
+}
 
 /* IMAGE BOX */
 .img-box{
@@ -953,10 +986,8 @@ Add to Cart
 <button class="whatsapp-order-btn" onclick="sendWhatsApp()">
 <i class="fa-brands fa-whatsapp"></i> Order on WhatsApp
 </button>
-<button class="whatsapp-order-btn" onclick="payNow()" 
-style="margin-top:10px;background:linear-gradient(45deg,#6366f1,#4f46e5);">
-💳 Pay Now
-</button>
+
+<button id="payBtn" onclick="payNow()" style="margin-top:10px;background:linear-gradient(45deg,#6366f1,#4f46e5);"> Pay Now 💳</button>
 </div>
 
 
@@ -1526,6 +1557,12 @@ document.getElementById("navLinks").classList.remove("active");
 
 async function payNow(){
 
+let btn = document.getElementById("payBtn");
+
+// 🔥 disable button
+btn.innerText = "Processing...";
+btn.disabled = true;
+
 let total = 0;
 
 for(let item in cart){
@@ -1535,10 +1572,12 @@ total += price * cart[item];
 
 if(total === 0){
 alert("Cart is empty");
+btn.innerText = "Pay Now 💳";
+btn.disabled = false;
 return;
 }
 
-// backend ko call
+// backend call
 let res = await fetch("https://protolab-backend-vs3v.onrender.com/create-order", {
 method: "POST",
 headers: { "Content-Type": "application/json" },
@@ -1549,59 +1588,66 @@ let order = await res.json();
 
 // Razorpay open
 var options = {
-"key": "rzp_live_SdrFsfK0urHabE", // Enter the Key ID generated from the Dashboard
-"amount": order.amount,
-"currency": "INR",
-"name": "ProtoLab Store",
-"description": "Order Payment",
-"order_id": order.id,
+key: "rzp_live_SdrFsfK0urHabE",
+amount: order.amount,
+currency: "INR",
+name: "ProtoLab Store",
+description: "Order Payment",
+order_id: order.id,
 
-handler: function (response){
+handler: async function (response){
 
 alert("✅ Payment Successful!");
 
-// 🔥 cart ka backup
+// 🔥 cart ka backup (VERY IMPORTANT)
 let cartCopy = {...cart};
 
 let message = `🛒 ProtoLab Order
 
 Payment Successful ✅
-
 Payment ID: ${response.razorpay_payment_id}
 
 Items:
 `;
 
-let total = 0;
+let totalAmount = 0;
 
 for(let item in cartCopy){
 let price = priceMap[item] || 0;
 let qty = cartCopy[item];
-total += price * qty;
+totalAmount += price * qty;
 
 message += `${item} x ${qty} = ₹${price * qty}\n`;
 }
 
-message += `\nTotal: ₹${total}`;
+message += `\nTotal: ₹${totalAmount}`;
 
-// 📲 WhatsApp
-let url = "https://wa.me/919891721141?text=" + encodeURIComponent(message);
-window.open(url, "_blank");
+// 🔥 ENCODE FIX
+let finalURL = "https://wa.me/919891721141?text=" + encodeURIComponent(message);
 
-// 🔥 ab cart clear karo
+// 🔥 OPEN AFTER SMALL DELAY
+setTimeout(()=>{
+window.open(finalURL, "_blank");
+}, 500);
+
+// 🔥 CART CLEAR LAST
 cart = {};
 updateCart();
 
 },
 
-"theme": {
-"color": "#38bdf8"
-}
+theme: { color: "#38bdf8" }
 };
 
 var rzp = new Razorpay(options);
 rzp.open();
+
+// 🔥 re-enable button after open
+btn.innerText = "Pay Now 💳";
+btn.disabled = false;
 }
+
+
 function showInfoBox(e, name, image){
 
 let info = infoMap[name] || "Basic electronic component.";
